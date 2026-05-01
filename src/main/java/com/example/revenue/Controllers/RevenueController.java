@@ -2,6 +2,8 @@ package com.example.revenue.Controllers;
 
 import com.example.revenue.Models.Revenue;
 import com.example.revenue.Services.RevenueService;
+import com.example.revenue.UserClient;
+import com.example.revenue.UserDTO;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -15,6 +17,8 @@ public class RevenueController {
 
     @Autowired
     private RevenueService revenueService;
+    @Autowired
+    private UserClient userClient;
 
     // ✅ GET by ID
     @GetMapping("/{id}")
@@ -66,6 +70,12 @@ public class RevenueController {
         } else {
             return new ResponseEntity<>(response, HttpStatus.NOT_FOUND);
         }
+    }
+
+    @GetMapping("/User/{id}")
+    public ResponseEntity<UserDTO> getRevenueByUserId(@PathVariable Long id) {
+        UserDTO userDTO = userClient.getUserById(id);
+        return ResponseEntity.ok(userDTO);
     }
 
 
