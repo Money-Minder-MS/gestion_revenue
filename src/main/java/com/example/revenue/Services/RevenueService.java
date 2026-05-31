@@ -1,6 +1,7 @@
 package com.example.revenue.Services;
-
+import com.example.revenue.NotificationPublisher;
 import com.example.revenue.Models.Revenue;
+import com.example.revenue.RabbitMQConfig;
 import com.example.revenue.Repositories.RevenueRepo;
 import com.example.revenue.UserClient;
 import com.example.revenue.UserDTO;
@@ -9,10 +10,14 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 @Service
 public class RevenueService {
+    @Autowired
+    private NotificationPublisher notificationPublisher;
 
     @Autowired
     private RevenueRepo revenueRepo;
@@ -23,13 +28,11 @@ public class RevenueService {
     // ✅ CREATE — userId injecté automatiquement depuis le header
     public ResponseEntity<?> addRevenue(Revenue revenue, Long userId) {
 
-        // Bloquer si pas d'utilisateur connecté
         if (userId == null) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                     .body("Aucun utilisateur connecté. Ajout impossible.");
         }
 
-        // Vérifier que l'utilisateur existe dans Gestion-Utilisateur
         try {
             UserDTO user = userClient.getUserById(userId);
             if (user == null) {
@@ -41,10 +44,24 @@ public class RevenueService {
                     .body("Service utilisateur indisponible.");
         }
 
-        // Injecter l'userId automatiquement — jamais depuis le body
         revenue.setUserId(userId);
-        return ResponseEntity.status(HttpStatus.CREATED)
-                .body(revenueRepo.save(revenue));
+
+        // ✅ Save first, then publish notification
+        Revenue saved = revenueRepo.save(revenue);
+
+        Map<String, Object> data = new HashMap<>();
+        data.put("montant", saved.getAmount());
+        data.put("source",  saved.getSource());
+
+        notificationPublisher.publier(
+                RabbitMQConfig.KEY_REVENUE,
+                userId,
+                "Nouveau revenu ajouté : " + saved.getSource() + " (" + saved.getAmount() + " DT)",
+                data
+        );
+
+        // ✅ Return AFTER the notification is published
+        return ResponseEntity.status(HttpStatus.CREATED).body(saved);
     }
 
     // ✅ READ BY ID
