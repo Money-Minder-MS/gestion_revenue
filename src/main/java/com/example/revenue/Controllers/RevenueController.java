@@ -24,7 +24,6 @@ public class RevenueController {
     @GetMapping("/{id}")
     public ResponseEntity<Revenue> getRevenueById(@PathVariable Long id) {
         Revenue revenue = revenueService.getRevenueById(id);
-
         if (revenue != null) {
             return new ResponseEntity<>(revenue, HttpStatus.OK);
         } else {
@@ -38,20 +37,32 @@ public class RevenueController {
         return new ResponseEntity<>(revenueService.getAllRevenues(), HttpStatus.OK);
     }
 
-    // ✅ CREATE
+    // ✅ GET revenues de l'utilisateur connecté
+    @GetMapping("/user")
+    public ResponseEntity<?> getMyRevenues(
+            @RequestHeader(value = "X-User-Id", required = false) Long userId) {
+
+        if (userId == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body("Aucun utilisateur connecté.");
+        }
+        return ResponseEntity.ok(revenueService.getRevenuesByUserId(userId));
+    }
+
+    // ✅ CREATE — userId depuis le header, jamais depuis le body
     @PostMapping
-    public ResponseEntity<Revenue> addRevenue(@RequestBody Revenue revenue) {
-        Revenue createdRevenue = revenueService.addRevenue(revenue);
-        return new ResponseEntity<>(createdRevenue, HttpStatus.CREATED);
+    public ResponseEntity<?> addRevenue(
+            @RequestBody Revenue revenue,
+            @RequestHeader(value = "X-User-Id", required = false) Long userId) {
+
+        return revenueService.addRevenue(revenue, userId);
     }
 
     // ✅ UPDATE
     @PutMapping("/{id}")
     public ResponseEntity<Revenue> updateRevenue(@PathVariable Long id,
                                                  @RequestBody Revenue newRevenue) {
-
         Revenue updatedRevenue = revenueService.updateRevenue(id, newRevenue);
-
         if (updatedRevenue != null) {
             return new ResponseEntity<>(updatedRevenue, HttpStatus.OK);
         } else {
@@ -62,9 +73,7 @@ public class RevenueController {
     // ✅ DELETE
     @DeleteMapping("/{id}")
     public ResponseEntity<String> deleteRevenue(@PathVariable Long id) {
-
         String response = revenueService.deleteRevenue(id);
-
         if (response.equals("Revenue supprimé")) {
             return new ResponseEntity<>(response, HttpStatus.OK);
         } else {
@@ -72,11 +81,10 @@ public class RevenueController {
         }
     }
 
+    // ✅ GET user info par ID (existant)
     @GetMapping("/User/{id}")
     public ResponseEntity<UserDTO> getRevenueByUserId(@PathVariable Long id) {
         UserDTO userDTO = userClient.getUserById(id);
         return ResponseEntity.ok(userDTO);
     }
-
-
 }

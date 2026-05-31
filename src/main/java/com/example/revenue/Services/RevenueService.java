@@ -2,7 +2,11 @@ package com.example.revenue.Services;
 
 import com.example.revenue.Models.Revenue;
 import com.example.revenue.Repositories.RevenueRepo;
+import com.example.revenue.UserClient;
+import com.example.revenue.UserDTO;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -13,9 +17,34 @@ public class RevenueService {
     @Autowired
     private RevenueRepo revenueRepo;
 
-    // ✅ CREATE
-    public Revenue addRevenue(Revenue revenue) {
-        return revenueRepo.save(revenue);
+    @Autowired
+    private UserClient userClient;
+
+    // ✅ CREATE — userId injecté automatiquement depuis le header
+    public ResponseEntity<?> addRevenue(Revenue revenue, Long userId) {
+
+        // Bloquer si pas d'utilisateur connecté
+        if (userId == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body("Aucun utilisateur connecté. Ajout impossible.");
+        }
+
+        // Vérifier que l'utilisateur existe dans Gestion-Utilisateur
+        try {
+            UserDTO user = userClient.getUserById(userId);
+            if (user == null) {
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                        .body("Utilisateur introuvable.");
+            }
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
+                    .body("Service utilisateur indisponible.");
+        }
+
+        // Injecter l'userId automatiquement — jamais depuis le body
+        revenue.setUserId(userId);
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(revenueRepo.save(revenue));
     }
 
     // ✅ READ BY ID
@@ -26,6 +55,11 @@ public class RevenueService {
     // ✅ READ ALL
     public List<Revenue> getAllRevenues() {
         return revenueRepo.findAll();
+    }
+
+    // ✅ READ BY USER
+    public List<Revenue> getRevenuesByUserId(Long userId) {
+        return revenueRepo.findByUserId(userId);
     }
 
     // ✅ UPDATE
@@ -39,7 +73,7 @@ public class RevenueService {
             existingRevenue.setDate(newRevenue.getDate());
             existingRevenue.setDescription(newRevenue.getDescription());
             existingRevenue.setCategoryId(newRevenue.getCategoryId());
-            existingRevenue.setUserId(newRevenue.getUserId());
+            // ⚠️ userId NON modifiable lors d'un update
 
             return revenueRepo.save(existingRevenue);
         } else {
