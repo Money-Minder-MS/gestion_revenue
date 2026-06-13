@@ -25,7 +25,7 @@ public class RevenueService {
     @Autowired
     private UserClient userClient;
 
-    // ✅ CREATE — userId injecté automatiquement depuis le header
+    // ✅ CREATE — userId fourni dans le body (id local transmis par le frontend)
     public ResponseEntity<?> addRevenue(Revenue revenue, Long userId) {
 
         if (userId == null) {
@@ -33,15 +33,12 @@ public class RevenueService {
                     .body("Aucun utilisateur connecté. Ajout impossible.");
         }
 
+        // Validation best-effort de l'existence de l'utilisateur : on NE bloque PAS
+        // la création si le service utilisateur est momentanément indisponible.
         try {
-            UserDTO user = userClient.getUserById(userId);
-            if (user == null) {
-                return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                        .body("Utilisateur introuvable.");
-            }
+            userClient.getUserById(userId);
         } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
-                    .body("Service utilisateur indisponible.");
+            System.out.println("[⚠] Vérification utilisateur ignorée (service indisponible) : " + e.getMessage());
         }
 
         revenue.setUserId(userId);

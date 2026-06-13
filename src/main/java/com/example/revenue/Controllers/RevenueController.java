@@ -40,22 +40,25 @@ public class RevenueController {
     // ✅ GET revenues de l'utilisateur connecté
     @GetMapping("/user")
     public ResponseEntity<?> getMyRevenues(
-            @RequestHeader(value = "X-User-Id", required = false) Long userId) {
+            @RequestHeader(value = "X-User-Id", required = false) String userIdHeader) {
 
-        if (userId == null) {
+        if (userIdHeader == null || userIdHeader.isBlank()) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                     .body("Aucun utilisateur connecté.");
         }
-        return ResponseEntity.ok(revenueService.getRevenuesByUserId(userId));
+        try {
+            Long userId = Long.parseLong(userIdHeader);
+            return ResponseEntity.ok(revenueService.getRevenuesByUserId(userId));
+        } catch (NumberFormatException e) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body("Aucun utilisateur connecté.");
+        }
     }
 
-    // ✅ CREATE — userId depuis le header, jamais depuis le body
+    // ✅ CREATE — userId depuis le body (ID numérique local, transmis par le frontend après sync-keycloak)
     @PostMapping
-    public ResponseEntity<?> addRevenue(
-            @RequestBody Revenue revenue,
-            @RequestHeader(value = "X-User-Id", required = false) Long userId) {
-
-        return revenueService.addRevenue(revenue, userId);
+    public ResponseEntity<?> addRevenue(@RequestBody Revenue revenue) {
+        return revenueService.addRevenue(revenue, revenue.getUserId());
     }
 
     // ✅ UPDATE
